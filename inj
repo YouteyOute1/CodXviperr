@@ -1,447 +1,559 @@
--- LocalScript : Placer dans StarterPlayer > StarterPlayerScripts
+-- OYB OFFICIAL | PLATOBOOST KEY SYSTEM
+-- Custom GUI: 395x248
+-- Draggable Topbar | Getkey / Checkkey / Minimize / Exit
+-- Auto-login + Key saving
+
+local Config = {
+    ServiceId = 36893,
+    PlatoSecret = "c18a54e2-bc6c-4286-9229-eec7e3e84a13",
+
+    -- Doit correspondre a la variable _G verifiee par ton script principal
+    Secret = "1234",
+
+    MainScriptURL = "https://raw.githubusercontent.com/YouteyOute1/CodXviperr/refs/heads/main/inj?token=GHSAT0AAAAAAEPOGUZS2W7BOHGOV6CHXSNM2XSBZJA",
+
+    KeyFileName = "Mykey.txt",
+
+    OldGuiName = "test",   -- ancien GUI a detruire
+    MainGuiName = "test",  -- GUI du script principal (deja execute)
+
+    Image = "rbxassetid://132442942526394",
+    HubName = "test"
+}
+
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local player = Players.LocalPlayer
 
-local LocalPlayer = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local host = "https://api.platoboost.com"
+local useNonce = true
 
-local isAutoFarmActive = false
-local isAlive = true
-local registerInitialDoors = {}
-local shotCount = 0
+-- REQUEST
+local function safeRequest(options)
+    local req = request or http_request or syn_request or (syn and syn.request) or (http and http.request)
 
---------------------------------------------------------------------
--- INTERFACE
---------------------------------------------------------------------
-local ScreenGui = Instance.new("ScreenGui")
-local Frame = Instance.new("Frame")
-local Topbar = Instance.new("Frame")
-local Title = Instance.new("TextLabel")
-local Exit = Instance.new("TextButton")
-local minimize = Instance.new("TextButton")
-local Frame_2 = Instance.new("Frame")
-local ImageLabel = Instance.new("ImageLabel")
-local autofarm = Instance.new("TextButton")
-local candyLabel = Instance.new("TextLabel")
+    if not req then
+        return nil, "HTTP requests not supported"
+    end
 
-ScreenGui.Name = "Master_Farm_GUI"
-ScreenGui.Parent = PlayerGui
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    local success, response = pcall(function()
+        return req(options)
+    end)
 
-Frame.Parent = ScreenGui
-Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Frame.BackgroundTransparency = 1.000
-Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-Frame.BorderSizePixel = 0
-Frame.Position = UDim2.new(0.407407403, 0, 0.40157479, 0)
-Frame.Size = UDim2.new(0, 395, 0, 248)
+    if success and type(response) == "table" then
+        return response
+    end
 
-Topbar.Name = "Topbar"
-Topbar.Parent = Frame
-Topbar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Topbar.BorderColor3 = Color3.fromRGB(0, 0, 0)
-Topbar.BorderSizePixel = 0
-Topbar.Position = UDim2.new(-0.0685420185, 0, -0.00165090256, 0)
-Topbar.Size = UDim2.new(0, 421, 0, 49)
-
-Title.Parent = Topbar
-Title.BackgroundTransparency = 1
-Title.Position = UDim2.new(0, 12, 0, 0)
-Title.Size = UDim2.new(0, 200, 1, 0)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "Master Farm"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-Exit.Name = "Exit"
-Exit.Parent = Topbar
-Exit.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Exit.BorderColor3 = Color3.fromRGB(0, 0, 0)
-Exit.BorderSizePixel = 0
-Exit.Position = UDim2.new(0.885606945, 0, 0.244897962, 0)
-Exit.Size = UDim2.new(0, 40, 0, 25)
-Exit.ZIndex = 3
-Exit.Font = Enum.Font.GothamBold
-Exit.Text = "X"
-Exit.TextColor3 = Color3.fromRGB(0, 0, 0)
-Exit.TextSize = 14.000
-
-minimize.Name = "minimize"
-minimize.Parent = Topbar
-minimize.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-minimize.BorderColor3 = Color3.fromRGB(0, 0, 0)
-minimize.BorderSizePixel = 0
-minimize.Position = UDim2.new(0.751429617, 0, 0.244897962, 0)
-minimize.Size = UDim2.new(0, 40, 0, 25)
-minimize.Font = Enum.Font.GothamBold
-minimize.Text = "-"
-minimize.TextColor3 = Color3.fromRGB(0, 0, 0)
-minimize.TextSize = 14.000
-
-Frame_2.Parent = Frame
-Frame_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Frame_2.BackgroundTransparency = 1.000
-Frame_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
-Frame_2.BorderSizePixel = 0
-Frame_2.Position = UDim2.new(-0.000187586527, 0, 0.195929736, 0)
-Frame_2.Size = UDim2.new(0, 395, 0, 159)
-
-ImageLabel.Parent = Frame_2
-ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-ImageLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
-ImageLabel.BorderSizePixel = 0
-ImageLabel.Position = UDim2.new(-0.0683544278, 0, 0, 0)
-ImageLabel.Size = UDim2.new(1.06582284, 0, 1.40251577, 0)
-ImageLabel.Image = "rbxassetid://99904366038876"
-
--- Bouton Auto Farm (descendu un peu)
-autofarm.Name = "autofarm"
-autofarm.Parent = Frame_2
-autofarm.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-autofarm.BorderColor3 = Color3.fromRGB(0, 0, 0)
-autofarm.BorderSizePixel = 0
-autofarm.Position = UDim2.new(0.5924052, 0, 0.9, 0)
-autofarm.Size = UDim2.new(0, 136, 0, 33)
-autofarm.Font = Enum.Font.GothamBold
-autofarm.Text = "Auto Farm: OFF"
-autofarm.TextColor3 = Color3.fromRGB(255, 255, 255)
-autofarm.TextSize = 12.000
-
--- Compteur de bonbons (ancien label ON/OFF, descendu un peu)
-candyLabel.Name = "candyLabel"
-candyLabel.Parent = Frame_2
-candyLabel.BackgroundTransparency = 1
-candyLabel.BorderSizePixel = 0
-candyLabel.Position = UDim2.new(0.72, 0, 0.08, 0)
-candyLabel.Size = UDim2.new(0, 105, 0, 34)
-candyLabel.Font = Enum.Font.GothamBold
-candyLabel.Text = "🍬 ..."
-candyLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
-candyLabel.TextScaled = true
-candyLabel.TextSize = 14.000
-
-local candyStroke = Instance.new("UIStroke")
-candyStroke.Color = Color3.fromRGB(0, 0, 0)
-candyStroke.Thickness = 1.5
-candyStroke.Parent = candyLabel
-
-local candyPadding = Instance.new("UIPadding")
-candyPadding.PaddingLeft = UDim.new(0, 6)
-candyPadding.PaddingRight = UDim.new(0, 6)
-candyPadding.PaddingTop = UDim.new(0, 5)
-candyPadding.PaddingBottom = UDim.new(0, 5)
-candyPadding.Parent = candyLabel
-
--- Déplacement via la Topbar
-local dragging, dragStart, startPos
-Topbar.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragging = true
-		dragStart = input.Position
-		startPos = Frame.Position
-		input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then dragging = false end
-		end)
-	end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - dragStart
-		Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
-end)
-
-local minimized = false
-minimize.MouseButton1Click:Connect(function()
-	minimized = not minimized
-	Frame_2.Visible = not minimized
-end)
-
---------------------------------------------------------------------
--- COMPTEUR DE BONBONS
---------------------------------------------------------------------
-local function formatFullNumber(number)
-	if type(number) ~= "number" then return "0" end
-	local formatted = tostring(math.floor(number))
-	local k
-	while true do
-		formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1 %2')
-		if k == 0 then break end
-	end
-	return formatted
+    return nil, "Connection Error: " .. tostring(response or "Unknown")
 end
 
-local function scanForCandies()
-	-- 1. Attributs du joueur
-	for name, val in pairs(LocalPlayer:GetAttributes()) do
-		if name:lower():find("candy") or name:lower():find("candies") then
-			return tonumber(val) or 0
-		end
-	end
+-- IDENTIFIER (meme logique que le 1er script)
+local function getIdentifier()
+    if gethwid then
+        local ok, res = pcall(gethwid)
+        if ok and res then return tostring(res) end
+    end
 
-	-- 2. Valeurs (IntValue, NumberValue...) dans le joueur
-	for _, obj in ipairs(LocalPlayer:GetDescendants()) do
-		if obj:IsA("ValueBase") then
-			local lowerName = obj.Name:lower()
-			if lowerName:find("candy") or lowerName:find("candies") or lowerName:find("bonbon") then
-				return obj.Value
-			end
-		end
-	end
+    local success, result = pcall(function()
+        return game:GetService("RbxAnalyticsService"):GetClientId()
+    end)
 
-	-- 3. Interface du jeu (nettoie virgules/points/espaces)
-	for _, guiObj in ipairs(PlayerGui:GetDescendants()) do
-		if (guiObj:IsA("TextLabel") or guiObj:IsA("TextBox")) and not guiObj:IsDescendantOf(ScreenGui) then
-			local parentName = guiObj.Parent and guiObj.Parent.Name:lower() or ""
-			local name = guiObj.Name:lower()
-			if (parentName:find("candy") or name:find("candy")) and guiObj.Text ~= "" then
-				local cleanText = guiObj.Text:gsub("[,%s%.]", "")
-				local number = cleanText:match("%d+")
-				if number then return tonumber(number) end
-			end
-		end
-	end
-
-	-- 4. Sac à dos
-	local backpack = LocalPlayer:FindFirstChild("Backpack")
-	if backpack then
-		local count = 0
-		for _, item in ipairs(backpack:GetChildren()) do
-			if item.Name:lower():find("candy") then
-				count = count + 1
-			end
-		end
-		if count > 0 then return count end
-	end
-
-	return 0
+    return success and result or ""
 end
 
-task.spawn(function()
-	while isAlive do
-		local ok, amount = pcall(scanForCandies)
-		candyLabel.Text = "🍬 " .. formatFullNumber(ok and amount or 0)
-		task.wait(0.5)
-	end
-end)
+-- SHA256
+local function sha256(message)
+    local bit = bit32 or bit
 
---------------------------------------------------------------------
--- DÉTECTION ÉTAT ATM & REGISTER
---------------------------------------------------------------------
-local function isATMBroken(atmObj)
-	local health = atmObj:GetAttribute("Health")
-	if health and typeof(health) == "number" and health <= 1 then return true end
-	local isOpen = atmObj:GetAttribute("Open")
-	if isOpen == true then return true end
-	local brokenVal = atmObj:FindFirstChild("Broken") or atmObj:FindFirstChild("IsBroken")
-	if brokenVal and (brokenVal.Value == true or brokenVal.Value == 1) then return true end
-	return false
+    local h = {
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+    }
+
+    local k = {
+        0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,
+        0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+        0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,
+        0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+        0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,
+        0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+        0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,
+        0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+        0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,
+        0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+        0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,
+        0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+        0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,
+        0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+        0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,
+        0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
+    }
+
+    local function rrotate(x, n)
+        return bit.rrotate(x, n)
+    end
+
+    local len = #message
+    message = message .. "\128"
+
+    while #message % 64 ~= 56 do
+        message = message .. "\0"
+    end
+
+    local bits = len * 8
+
+    for i = 7, 0, -1 do
+        message = message .. string.char(
+            math.floor(bits / 2^(i * 8)) % 256
+        )
+    end
+
+    for offset = 1, #message, 64 do
+        local w = {}
+
+        for i = 0, 15 do
+            local a, b, c, d = message:byte(
+                offset + i * 4,
+                offset + i * 4 + 3
+            )
+
+            w[i] = ((a * 256 + b) * 256 + c) * 256 + d
+        end
+
+        for i = 16, 63 do
+            local x, y = w[i - 15], w[i - 2]
+
+            local s0 = bit.bxor(rrotate(x, 7), rrotate(x, 18), bit.rshift(x, 3))
+            local s1 = bit.bxor(rrotate(y, 17), rrotate(y, 19), bit.rshift(y, 10))
+
+            w[i] = (w[i - 16] + s0 + w[i - 7] + s1) % 2^32
+        end
+
+        local a, b, c, d, e, f, g, hh =
+            h[1], h[2], h[3], h[4], h[5], h[6], h[7], h[8]
+
+        for i = 0, 63 do
+            local S1 = bit.bxor(rrotate(e, 6), rrotate(e, 11), rrotate(e, 25))
+            local ch = bit.bxor(bit.band(e, f), bit.band(bit.bnot(e), g))
+            local temp1 = (hh + S1 + ch + k[i + 1] + w[i]) % 2^32
+
+            local S0 = bit.bxor(rrotate(a, 2), rrotate(a, 13), rrotate(a, 22))
+            local maj = bit.bxor(bit.band(a, b), bit.band(a, c), bit.band(b, c))
+            local temp2 = (S0 + maj) % 2^32
+
+            hh, g, f, e, d, c, b, a =
+                g, f, e, (d + temp1) % 2^32,
+                c, b, a, (temp1 + temp2) % 2^32
+        end
+
+        local values = {a, b, c, d, e, f, g, hh}
+
+        for i = 1, 8 do
+            h[i] = (h[i] + values[i]) % 2^32
+        end
+    end
+
+    local result = ""
+
+    for i = 1, 8 do
+        result = result .. string.format("%08x", h[i])
+    end
+
+    return result
 end
 
-local function isRegisterOpened(regModel)
-	if not regModel or not regModel.Parent then return true end
-	for attrName, val in pairs(regModel:GetAttributes()) do
-		local n = attrName:lower()
-		if (n:find("open") or n:find("broken") or n:find("used")) and val == true then return true end
-	end
-	local door = regModel:FindFirstChild("Door")
-	if door and door:IsA("BasePart") then
-		local initialCFrame = registerInitialDoors[regModel]
-		if not initialCFrame then
-			registerInitialDoors[regModel] = door.CFrame
-		else
-			local distance = (door.Position - initialCFrame.Position).Magnitude
-			if distance > 0.2 then return true end
-		end
-	end
-	return false
+local function getHWID()
+    return sha256(getIdentifier())
 end
 
---------------------------------------------------------------------
--- FILTRAGE DU CASH
---------------------------------------------------------------------
-local function shouldIgnoreCandy(obj)
-	local fullName = obj.Name:lower()
-	for _, descendant in ipairs(obj:GetDescendants()) do
-		if descendant:IsA("TextLabel") then
-			local text = descendant.Text:lower()
-			if text:find("-$7") or text:find("7") then return true end
-		end
-	end
-	if fullName:find("-$7") or fullName:find("7") then return true end
-	return false
+-- NONCE
+local function generateNonce()
+    local chars = "abcdefghijklmnopqrstuvwxyz"
+    local nonce = ""
+
+    for i = 1, 16 do
+        local index = math.random(1, #chars)
+        nonce = nonce .. chars:sub(index, index)
+    end
+
+    return nonce
 end
 
-local function isPickableCash(obj)
-	if shouldIgnoreCandy(obj) then return false end
-	if obj:FindFirstChildOfClass("ProximityPrompt") or obj:FindFirstChildOfClass("ClickDetector") then return true end
-	if obj.Parent and (obj.Parent:FindFirstChildOfClass("ProximityPrompt") or obj.Parent:FindFirstChildOfClass("ClickDetector")) then return true end
-	return false
+-- CONNECTIVITE (avec fallback .net comme le 1er script)
+local function checkConnectivity()
+    local response = safeRequest({Url = host .. "/public/connectivity", Method = "GET"})
+
+    if not response or (response.StatusCode ~= 200 and response.StatusCode ~= 429) then
+        host = "https://api.platoboost.net"
+        local fallback = safeRequest({Url = host .. "/public/connectivity", Method = "GET"})
+        if not fallback then
+            return false
+        end
+    end
+
+    return true
 end
 
---------------------------------------------------------------------
--- RAMASSAGE DU CASH
---------------------------------------------------------------------
-local function collectNearbyLoot(hrp)
-	task.wait(0.3)
-	for attempt = 1, 5 do
-		local foundAny = false
-		for _, obj in ipairs(Workspace:GetDescendants()) do
-			local name = obj.Name:lower()
-			if (name:find("candycash") or name:find("candy") or name:find("cash") or name:find("money")) and isPickableCash(obj) then
-				local lootPos = obj:IsA("Model") and obj:GetPivot().Position or (obj:IsA("BasePart") and obj.Position)
-				if lootPos and (hrp.Position - lootPos).Magnitude < 40 then
-					foundAny = true
-					hrp.CFrame = CFrame.new(lootPos + Vector3.new(0, 1, 0))
-					task.wait(0.1)
+-- GET KEY LINK (avec cache 10 min)
+local cachedLink, cachedTime = "", 0
 
-					local prompt = obj:FindFirstChildOfClass("ProximityPrompt") or (obj.Parent and obj.Parent:FindFirstChildOfClass("ProximityPrompt"))
-					if prompt then
-						pcall(function()
-							prompt.HoldDuration = 0
-							fireproximityprompt(prompt)
-						end)
-					end
+local function cacheLink()
+    if not checkConnectivity() then
+        return false, "Network error! Use VPN or change executor."
+    end
 
-					VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-					task.wait(0.1)
-					VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-					task.wait(0.05)
-				end
-			end
-		end
-		if not foundAny then break end
-		task.wait(0.2)
-	end
+    if cachedTime + (10 * 60) < os.time() then
+        local response, err = safeRequest({
+            Url = host .. "/public/start",
+            Method = "POST",
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({
+                service = Config.ServiceId,
+                identifier = getHWID()
+            })
+        })
+
+        if response and response.StatusCode == 200 then
+            local ok, data = pcall(function()
+                return HttpService:JSONDecode(response.Body)
+            end)
+
+            if ok and data.success then
+                cachedLink = data.data.url
+                cachedTime = os.time()
+                return true, cachedLink
+            end
+        end
+
+        return false, err or "Unable to get link"
+    end
+
+    return true, cachedLink
 end
 
---------------------------------------------------------------------
--- ATTAQUE CIBLE
---------------------------------------------------------------------
-local function attackClosestTarget()
-	local character = LocalPlayer.Character
-	local hrp = character and character:FindFirstChild("HumanoidRootPart")
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if not hrp or not humanoid then return false end
+-- REDEEM KEY
+local function redeemKey(key)
+    local nonce = generateNonce()
 
-	local closestTarget = nil
-	local shortestDist = math.huge
-	local isRegisterTarget = false
+    local body = {
+        identifier = getHWID(),
+        key = key
+    }
 
-	for _, obj in ipairs(Workspace:GetDescendants()) do
-		local name = obj.Name:lower()
-		local isAvailable = false
-		local targetCFrame = nil
-		local isReg = false
+    if useNonce then
+        body.nonce = nonce
+    end
 
-		if name == "atm" and (obj:IsA("Model") or obj:IsA("BasePart")) then
-			if not isATMBroken(obj) then
-				isAvailable = true
-				targetCFrame = obj:IsA("Model") and obj:GetPivot() or obj.CFrame
-				isReg = false
-			end
-		elseif obj.Name == "Register" and obj:IsA("Model") then
-			if not isRegisterOpened(obj) then
-				isAvailable = true
-				targetCFrame = obj:GetPivot()
-				isReg = true
-			end
-		end
+    local response, err = safeRequest({
+        Url = host .. "/public/redeem/" .. tostring(Config.ServiceId),
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = HttpService:JSONEncode(body)
+    })
 
-		if isAvailable and targetCFrame then
-			local dist = (hrp.Position - targetCFrame.Position).Magnitude
-			if dist < shortestDist then
-				shortestDist = dist
-				closestTarget = {object = obj, cframe = targetCFrame}
-				isRegisterTarget = isReg
-			end
-		end
-	end
+    if response and response.StatusCode == 200 then
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(response.Body)
+        end)
 
-	if closestTarget then
-		local pos = closestTarget.cframe.Position
-		local targetPos = pos - (closestTarget.cframe.LookVector * 4) + Vector3.new(0, 0.5, 0)
+        if not ok then
+            return false, "Server Error"
+        end
 
-		hrp.CFrame = CFrame.new(targetPos, pos)
+        if data.success and data.data and data.data.valid then
+            if useNonce then
+                local expected = sha256("true" .. "-" .. nonce .. "-" .. Config.PlatoSecret)
 
-		local aimOffset = isRegisterTarget and Vector3.new(0, 5.5, 0) or Vector3.new(0, 2.5, 0)
-		Camera.CFrame = CFrame.new(targetPos - (closestTarget.cframe.LookVector * 5) + Vector3.new(0, 0.2, 0), pos - aimOffset)
+                if data.data.hash ~= expected then
+                    return false, "Integrity Check Failed"
+                end
+            end
 
-		local backpack = LocalPlayer:FindFirstChild("Backpack")
-		local dbTool = nil
+            if writefile then
+                pcall(writefile, Config.KeyFileName, key)
+            end
 
-		local function findDB(parent)
-			if not parent then return nil end
-			for _, item in ipairs(parent:GetChildren()) do
-				local itemName = item.Name:lower()
-				if item:IsA("Tool") and (itemName:find("double") or itemName:find("db")) then return item end
-			end
-		end
+            return true, "Success"
+        end
 
-		dbTool = findDB(backpack) or findDB(character)
+        return false, data.message or "Invalid Key"
+    end
 
-		if dbTool then
-			humanoid:EquipTool(dbTool)
-			task.wait(0.15)
-
-			local screenPoint, onScreen = Camera:WorldToScreenPoint(pos - aimOffset)
-			if onScreen then
-				VirtualInputManager:SendMouseMoveEvent(screenPoint.X, screenPoint.Y, game)
-				task.wait(0.05)
-			end
-
-			hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(pos.X, hrp.Position.Y, pos.Z))
-
-			shotCount = shotCount + 1
-			dbTool:Activate()
-
-			task.wait(0.2)
-
-			if shotCount >= 2 then
-				VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
-				task.wait(0.05)
-				VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
-				shotCount = 0
-			end
-
-			collectNearbyLoot(hrp)
-			return true
-		end
-	end
-	return false
+    return false, err or "Server Error"
 end
 
---------------------------------------------------------------------
--- AUTO FARM
---------------------------------------------------------------------
-autofarm.MouseButton1Click:Connect(function()
-	isAutoFarmActive = not isAutoFarmActive
-	if isAutoFarmActive then
-		autofarm.Text = "Auto Farm: ON"
-		autofarm.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-	else
-		autofarm.Text = "Auto Farm: OFF"
-		autofarm.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-	end
-end)
+-- PARENT DU GUI
+local function getGuiParent()
+    if gethui then
+        local ok, res = pcall(gethui)
+        if ok and res then return res end
+    end
 
-task.spawn(function()
-	while isAlive do
-		if isAutoFarmActive then
-			pcall(attackClosestTarget)
-		end
-		task.wait(0.5)
-	end
-end)
+    local ok = pcall(function()
+        local test = Instance.new("ScreenGui")
+        test.Parent = game:GetService("CoreGui")
+        test:Destroy()
+    end)
 
-Exit.MouseButton1Click:Connect(function()
-	isAlive = false
-	isAutoFarmActive = false
-	ScreenGui:Destroy()
-end)
+    if ok then
+        return game:GetService("CoreGui")
+    end
+
+    return player:WaitForChild("PlayerGui")
+end
+
+-- START MAIN SCRIPT
+local function StartMainScript()
+    local pGui = player:WaitForChild("PlayerGui")
+
+    if pGui:FindFirstChild(Config.OldGuiName) then
+        pGui[Config.OldGuiName]:Destroy()
+        task.wait(0.1)
+    end
+
+    -- Variable secrete verifiee par le script principal
+    _G[Config.Secret] = true
+
+    loadstring(game:HttpGet(Config.MainScriptURL))()
+end
+
+-- CREATE GUI
+local function CreateGUI()
+    local parent = getGuiParent()
+
+    local old = parent:FindFirstChild("OYB_KeySystem")
+    if old then
+        old:Destroy()
+    end
+
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "OYB_KeySystem"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = parent
+
+    local Frame = Instance.new("Frame")
+    Frame.Parent = ScreenGui
+    Frame.Size = UDim2.new(0, 395, 0, 248)
+    Frame.Position = UDim2.new(0.5, -197, 0.5, -124)
+    Frame.BackgroundTransparency = 1
+    Frame.Active = true
+
+    -- TOPBAR
+    local Topbar = Instance.new("Frame")
+    Topbar.Parent = Frame
+    Topbar.Size = UDim2.new(0, 421, 0, 49)
+    Topbar.Position = UDim2.new(0, -27, 0, 0)
+    Topbar.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Topbar.BorderSizePixel = 0
+    Topbar.Active = true
+
+    -- DRAG SYSTEM
+    local dragging = false
+    local dragInput
+    local dragStart
+    local startPosition
+
+    local function updateDrag(input)
+        local delta = input.Position - dragStart
+
+        Frame.Position = UDim2.new(
+            startPosition.X.Scale,
+            startPosition.X.Offset + delta.X,
+            startPosition.Y.Scale,
+            startPosition.Y.Offset + delta.Y
+        )
+    end
+
+    Topbar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            dragging = true
+            dragStart = input.Position
+            startPosition = Frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    Topbar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
+
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input == dragInput then
+            updateDrag(input)
+        end
+    end)
+
+    -- BUTTON CREATION
+    local function createButton(name, text, pos, size, btnParent)
+        local button = Instance.new("TextButton")
+
+        button.Name = name
+        button.Parent = btnParent
+        button.Text = text
+        button.Position = pos
+        button.Size = size
+        button.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+        button.TextColor3 = Color3.new(1, 1, 1)
+        button.Font = Enum.Font.GothamBold
+        button.TextSize = 13
+        button.BorderSizePixel = 0
+
+        return button
+    end
+
+    -- EXIT
+    local Exit = createButton("Exit", "X", UDim2.new(0.885, 0, 0.245, 0), UDim2.new(0, 40, 0, 25), Topbar)
+
+    -- MINIMIZE
+    local Minimize = createButton("minimize", "-", UDim2.new(0.751, 0, 0.245, 0), UDim2.new(0, 40, 0, 25), Topbar)
+
+    -- CONTENT
+    local Content = Instance.new("Frame")
+    Content.Parent = Frame
+    Content.Position = UDim2.new(0, 0, 0.196, 0)
+    Content.Size = UDim2.new(0, 395, 0, 159)
+    Content.BackgroundTransparency = 1
+
+    -- IMAGE
+    local Image = Instance.new("ImageLabel")
+    Image.Parent = Content
+    Image.Size = UDim2.new(1.066, 0, 1.302, 0)
+    Image.Position = UDim2.new(-0.068, 0, 0, 0)
+    Image.Image = Config.Image
+    Image.BackgroundTransparency = 1
+    Image.ZIndex = 0
+
+    -- KEY BOX
+    local KeyBox = Instance.new("TextBox")
+    KeyBox.Parent = Content
+    KeyBox.Position = UDim2.new(0.033, 0, 0.305, 0)
+    KeyBox.Size = UDim2.new(0, 205, 0, 28)
+    KeyBox.PlaceholderText = "Enter Key..."
+    KeyBox.Text = ""
+    KeyBox.Font = Enum.Font.Gotham
+    KeyBox.TextSize = 14
+    KeyBox.TextColor3 = Color3.new(1, 1, 1)
+    KeyBox.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    KeyBox.BackgroundTransparency = 0.2
+    KeyBox.ZIndex = 2
+
+    -- STATUS
+    local Status = Instance.new("TextLabel")
+    Status.Parent = Content
+    Status.Position = UDim2.new(0.033, 0, 0.08, 0)
+    Status.Size = UDim2.new(0, 205, 0, 25)
+    Status.BackgroundTransparency = 1
+    Status.Text = "Waiting for input..."
+    Status.TextColor3 = Color3.new(1, 1, 1)
+    Status.Font = Enum.Font.Gotham
+    Status.TextSize = 12
+    Status.ZIndex = 3
+
+    -- GET KEY
+    local Getkey = createButton("Getkey", "GET KEY", UDim2.new(0.033, 0, 0.734, 0), UDim2.new(0, 205, 0, 19), Content)
+
+    -- CHECK KEY
+    local Checkkey = createButton("Checkkey", "CHECK KEY", UDim2.new(0.033, 0, 0.912, 0), UDim2.new(0, 205, 0, 19), Content)
+
+    -- EXIT ACTION
+    Exit.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    -- MINIMIZE ACTION
+    local minimized = false
+
+    Minimize.MouseButton1Click:Connect(function()
+        minimized = not minimized
+
+        Content.Visible = not minimized
+
+        Frame.Size = minimized
+            and UDim2.new(0, 395, 0, 49)
+            or UDim2.new(0, 395, 0, 248)
+
+        Minimize.Text = minimized and "+" or "-"
+    end)
+
+    -- GET KEY ACTION
+    Getkey.MouseButton1Click:Connect(function()
+        Status.Text = "Getting link..."
+
+        local success, link = cacheLink()
+
+        if success then
+            if setclipboard or toclipboard then
+                (setclipboard or toclipboard)(link)
+                Status.Text = "Link copied!"
+            else
+                Status.Text = "Clipboard unavailable"
+            end
+        else
+            Status.Text = tostring(link)
+        end
+    end)
+
+    -- CHECK KEY ACTION
+    Checkkey.MouseButton1Click:Connect(function()
+        local key = KeyBox.Text
+
+        if key == "" then
+            Status.Text = "Enter a key!"
+            return
+        end
+
+        Status.Text = "Checking key..."
+
+        local success, message = redeemKey(key)
+
+        if success then
+            Status.Text = "Key accepted!"
+            task.wait(0.5)
+            ScreenGui:Destroy()
+            StartMainScript()
+        else
+            Status.Text = tostring(message)
+        end
+    end)
+
+    -- AUTO LOGIN
+    if isfile and readfile and isfile(Config.KeyFileName) then
+        local savedKey = readfile(Config.KeyFileName)
+
+        if savedKey ~= "" then
+            Status.Text = "Checking saved key..."
+
+            task.spawn(function()
+                local success = redeemKey(savedKey)
+
+                if success then
+                    Status.Text = "Auto login success!"
+                    task.wait(0.5)
+                    ScreenGui:Destroy()
+                    StartMainScript()
+                else
+                    Status.Text = "Saved key expired/invalid."
+                end
+            end)
+        end
+    end
+end
+
+-- INITIALIZE
+if player:WaitForChild("PlayerGui"):FindFirstChild(Config.MainGuiName) then
+    StartMainScript()
+else
+    CreateGUI()
+end
