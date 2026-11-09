@@ -10,7 +10,7 @@ local Config = {
     -- Doit correspondre a la variable _G verifiee par ton script principal
     Secret = "1234",
 
-    MainScriptURL = "https://raw.githubusercontent.com/YouteyOute1/CodXviperr/refs/heads/main/.gitattributes?token=GHSAT0AAAAAAEPOGUZS2R43SWNBAOWLBKTK2XSDWCQ",
+    MainScriptURL = "https://raw.githubusercontent.com/YouteyOute1/CodXviperr/refs/heads/main/.gitattributes?token=GHSAT0AAAAAAEPOGUZSGSV4SX2L2JQJ5RCC2XSD7RQ",
 
     KeyFileName = "Mykey.txt",
 
