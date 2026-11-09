@@ -2,40 +2,148 @@
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-local isMapInvisible = false
 local isAutoFarmActive = false
-local originalTransparencies = {}
-local activeHighlights = {}
-local activeConnections = {}
+local isAlive = true
 local registerInitialDoors = {}
 local shotCount = 0
 
--- Interface GUI
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "Master_Farm_GUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = PlayerGui
+--------------------------------------------------------------------
+-- INTERFACE
+--------------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local Topbar = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local Exit = Instance.new("TextButton")
+local minimize = Instance.new("TextButton")
+local Frame_2 = Instance.new("Frame")
+local ImageLabel = Instance.new("ImageLabel")
+local autofarm = Instance.new("TextButton")
+local candyLabel = Instance.new("TextLabel")
 
--- Frame Déplaçable
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 440, 0, 50)
-mainFrame.Position = UDim2.new(0.5, -220, 0.05, 0)
-mainFrame.BackgroundTransparency = 1
-mainFrame.Parent = screenGui
+ScreenGui.Name = "Master_Farm_GUI"
+ScreenGui.Parent = PlayerGui
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Frame.BackgroundTransparency = 1.000
+Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Frame.BorderSizePixel = 0
+Frame.Position = UDim2.new(0.407407403, 0, 0.40157479, 0)
+Frame.Size = UDim2.new(0, 395, 0, 248)
+
+Topbar.Name = "Topbar"
+Topbar.Parent = Frame
+Topbar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Topbar.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Topbar.BorderSizePixel = 0
+Topbar.Position = UDim2.new(-0.0685420185, 0, -0.00165090256, 0)
+Topbar.Size = UDim2.new(0, 421, 0, 49)
+
+Title.Parent = Topbar
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 12, 0, 0)
+Title.Size = UDim2.new(0, 200, 1, 0)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "Master Farm"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+Exit.Name = "Exit"
+Exit.Parent = Topbar
+Exit.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Exit.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Exit.BorderSizePixel = 0
+Exit.Position = UDim2.new(0.885606945, 0, 0.244897962, 0)
+Exit.Size = UDim2.new(0, 40, 0, 25)
+Exit.ZIndex = 3
+Exit.Font = Enum.Font.GothamBold
+Exit.Text = "X"
+Exit.TextColor3 = Color3.fromRGB(0, 0, 0)
+Exit.TextSize = 14.000
+
+minimize.Name = "minimize"
+minimize.Parent = Topbar
+minimize.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+minimize.BorderColor3 = Color3.fromRGB(0, 0, 0)
+minimize.BorderSizePixel = 0
+minimize.Position = UDim2.new(0.751429617, 0, 0.244897962, 0)
+minimize.Size = UDim2.new(0, 40, 0, 25)
+minimize.Font = Enum.Font.GothamBold
+minimize.Text = "-"
+minimize.TextColor3 = Color3.fromRGB(0, 0, 0)
+minimize.TextSize = 14.000
+
+Frame_2.Parent = Frame
+Frame_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Frame_2.BackgroundTransparency = 1.000
+Frame_2.BorderColor3 = Color3.fromRGB(0, 0, 0)
+Frame_2.BorderSizePixel = 0
+Frame_2.Position = UDim2.new(-0.000187586527, 0, 0.195929736, 0)
+Frame_2.Size = UDim2.new(0, 395, 0, 159)
+
+ImageLabel.Parent = Frame_2
+ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ImageLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+ImageLabel.BorderSizePixel = 0
+ImageLabel.Position = UDim2.new(-0.0683544278, 0, 0, 0)
+ImageLabel.Size = UDim2.new(1.06582284, 0, 1.40251577, 0)
+ImageLabel.Image = "rbxassetid://99904366038876"
+
+-- Bouton Auto Farm (descendu un peu)
+autofarm.Name = "autofarm"
+autofarm.Parent = Frame_2
+autofarm.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+autofarm.BorderColor3 = Color3.fromRGB(0, 0, 0)
+autofarm.BorderSizePixel = 0
+autofarm.Position = UDim2.new(0.5924052, 0, 0.9, 0)
+autofarm.Size = UDim2.new(0, 136, 0, 33)
+autofarm.Font = Enum.Font.GothamBold
+autofarm.Text = "Auto Farm: OFF"
+autofarm.TextColor3 = Color3.fromRGB(255, 255, 255)
+autofarm.TextSize = 12.000
+
+-- Compteur de bonbons (ancien label ON/OFF, descendu un peu)
+candyLabel.Name = "candyLabel"
+candyLabel.Parent = Frame_2
+candyLabel.BackgroundTransparency = 1
+candyLabel.BorderSizePixel = 0
+candyLabel.Position = UDim2.new(0.72, 0, 0.08, 0)
+candyLabel.Size = UDim2.new(0, 105, 0, 34)
+candyLabel.Font = Enum.Font.GothamBold
+candyLabel.Text = "🍬 ..."
+candyLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+candyLabel.TextScaled = true
+candyLabel.TextSize = 14.000
+
+local candyStroke = Instance.new("UIStroke")
+candyStroke.Color = Color3.fromRGB(0, 0, 0)
+candyStroke.Thickness = 1.5
+candyStroke.Parent = candyLabel
+
+local candyPadding = Instance.new("UIPadding")
+candyPadding.PaddingLeft = UDim.new(0, 6)
+candyPadding.PaddingRight = UDim.new(0, 6)
+candyPadding.PaddingTop = UDim.new(0, 5)
+candyPadding.PaddingBottom = UDim.new(0, 5)
+candyPadding.Parent = candyLabel
+
+-- Déplacement via la Topbar
 local dragging, dragStart, startPos
-mainFrame.InputBegan:Connect(function(input)
+Topbar.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
 		dragStart = input.Position
-		startPos = mainFrame.Position
+		startPos = Frame.Position
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then dragging = false end
 		end)
@@ -45,56 +153,87 @@ end)
 UserInputService.InputChanged:Connect(function(input)
 	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - dragStart
-		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 	end
 end)
 
--- Bouton 1 : X-Ray
-local xRayBtn = Instance.new("TextButton")
-xRayBtn.Size = UDim2.new(0, 140, 0, 45)
-xRayBtn.Position = UDim2.new(0, 0, 0, 0)
-xRayBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-xRayBtn.Text = "X-Ray: OFF"
-xRayBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-xRayBtn.Font = Enum.Font.GothamBold
-xRayBtn.TextSize = 12
-xRayBtn.Parent = mainFrame
+local minimized = false
+minimize.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	Frame_2.Visible = not minimized
+end)
 
-local corner1 = Instance.new("UICorner")
-corner1.CornerRadius = UDim.new(0, 8)
-corner1.Parent = xRayBtn
+--------------------------------------------------------------------
+-- COMPTEUR DE BONBONS
+--------------------------------------------------------------------
+local function formatFullNumber(number)
+	if type(number) ~= "number" then return "0" end
+	local formatted = tostring(math.floor(number))
+	local k
+	while true do
+		formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1 %2')
+		if k == 0 then break end
+	end
+	return formatted
+end
 
--- Bouton 2 : Mode Auto
-local autoBtn = Instance.new("TextButton")
-autoBtn.Size = UDim2.new(0, 140, 0, 45)
-autoBtn.Position = UDim2.new(0, 150, 0, 0)
-autoBtn.BackgroundColor3 = Color3.fromRGB(120, 50, 200)
-autoBtn.Text = "Auto Farm: OFF"
-autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-autoBtn.Font = Enum.Font.GothamBold
-autoBtn.TextSize = 12
-autoBtn.Parent = mainFrame
+local function scanForCandies()
+	-- 1. Attributs du joueur
+	for name, val in pairs(LocalPlayer:GetAttributes()) do
+		if name:lower():find("candy") or name:lower():find("candies") then
+			return tonumber(val) or 0
+		end
+	end
 
-local cornerAuto = Instance.new("UICorner")
-cornerAuto.CornerRadius = UDim.new(0, 8)
-cornerAuto.Parent = autoBtn
+	-- 2. Valeurs (IntValue, NumberValue...) dans le joueur
+	for _, obj in ipairs(LocalPlayer:GetDescendants()) do
+		if obj:IsA("ValueBase") then
+			local lowerName = obj.Name:lower()
+			if lowerName:find("candy") or lowerName:find("candies") or lowerName:find("bonbon") then
+				return obj.Value
+			end
+		end
+	end
 
--- Bouton 3 : Attaquer 1 Cible
-local attackBtn = Instance.new("TextButton")
-attackBtn.Size = UDim2.new(0, 140, 0, 45)
-attackBtn.Position = UDim2.new(0, 300, 0, 0)
-attackBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 220)
-attackBtn.Text = "🎯 Attaquer 1 Cible"
-attackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-attackBtn.Font = Enum.Font.GothamBold
-attackBtn.TextSize = 11
-attackBtn.Parent = mainFrame
+	-- 3. Interface du jeu (nettoie virgules/points/espaces)
+	for _, guiObj in ipairs(PlayerGui:GetDescendants()) do
+		if (guiObj:IsA("TextLabel") or guiObj:IsA("TextBox")) and not guiObj:IsDescendantOf(ScreenGui) then
+			local parentName = guiObj.Parent and guiObj.Parent.Name:lower() or ""
+			local name = guiObj.Name:lower()
+			if (parentName:find("candy") or name:find("candy")) and guiObj.Text ~= "" then
+				local cleanText = guiObj.Text:gsub("[,%s%.]", "")
+				local number = cleanText:match("%d+")
+				if number then return tonumber(number) end
+			end
+		end
+	end
 
-local corner2 = Instance.new("UICorner")
-corner2.CornerRadius = UDim.new(0, 8)
-corner2.Parent = attackBtn
+	-- 4. Sac à dos
+	local backpack = LocalPlayer:FindFirstChild("Backpack")
+	if backpack then
+		local count = 0
+		for _, item in ipairs(backpack:GetChildren()) do
+			if item.Name:lower():find("candy") then
+				count = count + 1
+			end
+		end
+		if count > 0 then return count end
+	end
 
--- 1. DÉTECTION ÉTAT ATM & REGISTER
+	return 0
+end
+
+task.spawn(function()
+	while isAlive do
+		local ok, amount = pcall(scanForCandies)
+		candyLabel.Text = "🍬 " .. formatFullNumber(ok and amount or 0)
+		task.wait(0.5)
+	end
+end)
+
+--------------------------------------------------------------------
+-- DÉTECTION ÉTAT ATM & REGISTER
+--------------------------------------------------------------------
 local function isATMBroken(atmObj)
 	local health = atmObj:GetAttribute("Health")
 	if health and typeof(health) == "number" and health <= 1 then return true end
@@ -103,17 +242,6 @@ local function isATMBroken(atmObj)
 	local brokenVal = atmObj:FindFirstChild("Broken") or atmObj:FindFirstChild("IsBroken")
 	if brokenVal and (brokenVal.Value == true or brokenVal.Value == 1) then return true end
 	return false
-end
-
-local function getRegisterModel(obj)
-	local current = obj
-	while current and current ~= Workspace do
-		if current.Name == "Register" and current:IsA("Model") then
-			return current
-		end
-		current = current.Parent
-	end
-	return nil
 end
 
 local function isRegisterOpened(regModel)
@@ -125,7 +253,9 @@ local function isRegisterOpened(regModel)
 	local door = regModel:FindFirstChild("Door")
 	if door and door:IsA("BasePart") then
 		local initialCFrame = registerInitialDoors[regModel]
-		if initialCFrame then
+		if not initialCFrame then
+			registerInitialDoors[regModel] = door.CFrame
+		else
 			local distance = (door.Position - initialCFrame.Position).Magnitude
 			if distance > 0.2 then return true end
 		end
@@ -133,7 +263,9 @@ local function isRegisterOpened(regModel)
 	return false
 end
 
--- 2. FILTRAGE ET HIGHLIGHTS
+--------------------------------------------------------------------
+-- FILTRAGE DU CASH
+--------------------------------------------------------------------
 local function shouldIgnoreCandy(obj)
 	local fullName = obj.Name:lower()
 	for _, descendant in ipairs(obj:GetDescendants()) do
@@ -153,112 +285,9 @@ local function isPickableCash(obj)
 	return false
 end
 
-local function applyHighlight(obj, fillColor)
-	if not (obj:IsA("Model") or obj:IsA("BasePart")) then return end
-	local highlight = obj:FindFirstChild("Master_HL")
-	if not highlight then
-		highlight = Instance.new("Highlight")
-		highlight.Name = "Master_HL"
-		highlight.FillTransparency = 0.25
-		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-		highlight.Parent = obj
-		table.insert(activeHighlights, highlight)
-	end
-	highlight.FillColor = fillColor
-end
-
-local function processObject(obj)
-	if not isMapInvisible then return end
-	local name = obj.Name:lower()
-
-	-- ATM
-	if name == "atm" or name == "atms" then
-		local color = isATMBroken(obj) and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(0, 255, 128)
-		applyHighlight(obj, color)
-		local c1 = obj:GetAttributeChangedSignal("Health"):Connect(function()
-			if isMapInvisible then applyHighlight(obj, isATMBroken(obj) and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(0, 255, 128)) end
-		end)
-		table.insert(activeConnections, c1)
-
-	-- REGISTER
-	else
-		local reg = getRegisterModel(obj)
-		if reg then
-			local door = reg:FindFirstChild("Door")
-			if door and door:IsA("BasePart") and not registerInitialDoors[reg] then
-				registerInitialDoors[reg] = door.CFrame
-			end
-			if obj:IsA("UnionOperation") and obj.Material == Enum.Material.SmoothPlastic then
-				local color = isRegisterOpened(reg) and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(0, 255, 128)
-				applyHighlight(obj, color)
-			end
-		elseif name:find("candycash") or name:find("candy") or name:find("cash") or name:find("money") then
-			task.delay(0.15, function()
-				if isMapInvisible and obj and obj.Parent and isPickableCash(obj) then
-					applyHighlight(obj, Color3.fromRGB(0, 255, 128))
-				end
-			end)
-		end
-	end
-end
-
--- 3. X-RAY CONTROL
-local function setMapInvisibility(enable)
-	if enable then
-		originalTransparencies = {}
-		activeConnections = {}
-
-		for _, part in ipairs(Workspace:GetDescendants()) do
-			if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
-				local isPlayerChar = Players:GetPlayerFromCharacter(part.Parent) or Players:GetPlayerFromCharacter(part.Parent.Parent)
-				local name = part.Name:lower()
-				local reg = getRegisterModel(part)
-				local isProtected = name:find("atm") or reg or ( (name:find("candy") or name:find("cash")) and isPickableCash(part) )
-				
-				if not isPlayerChar and not isProtected then
-					originalTransparencies[part] = part.Transparency
-					part.LocalTransparencyModifier = 0.85
-				end
-			end
-		end
-
-		for _, obj in ipairs(Workspace:GetDescendants()) do processObject(obj) end
-		local conn = Workspace.DescendantAdded:Connect(function(obj) processObject(obj) end)
-		table.insert(activeConnections, conn)
-	else
-		for _, conn in ipairs(activeConnections) do
-			if typeof(conn) == "RBXScriptConnection" then conn:Disconnect() end
-		end
-		activeConnections = {}
-
-		for part, originalTransparency in pairs(originalTransparencies) do
-			if part and part.Parent then part.LocalTransparencyModifier = 0 end
-		end
-		originalTransparencies = {}
-
-		for _, desc in ipairs(Workspace:GetDescendants()) do
-			local hl = desc:FindFirstChild("Master_HL")
-			if hl then hl:Destroy() end
-		end
-		activeHighlights = {}
-	end
-end
-
-xRayBtn.MouseButton1Click:Connect(function()
-	isMapInvisible = not isMapInvisible
-	if isMapInvisible then
-		xRayBtn.Text = "X-Ray: ON"
-		xRayBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
-		setMapInvisibility(true)
-	else
-		xRayBtn.Text = "X-Ray: OFF"
-		xRayBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-		setMapInvisibility(false)
-	end
-end)
-
--- 4. RAMASSAGE DU CASH
+--------------------------------------------------------------------
+-- RAMASSAGE DU CASH
+--------------------------------------------------------------------
 local function collectNearbyLoot(hrp)
 	task.wait(0.3)
 	for attempt = 1, 5 do
@@ -275,7 +304,7 @@ local function collectNearbyLoot(hrp)
 					local prompt = obj:FindFirstChildOfClass("ProximityPrompt") or (obj.Parent and obj.Parent:FindFirstChildOfClass("ProximityPrompt"))
 					if prompt then
 						pcall(function()
-							prompt.HoldDuration = 0 
+							prompt.HoldDuration = 0
 							fireproximityprompt(prompt)
 						end)
 					end
@@ -292,7 +321,9 @@ local function collectNearbyLoot(hrp)
 	end
 end
 
--- 5. ATTAQUE CIBLE (HAUTEUR DE VISÉE AJUSTÉE PIL-POIL)
+--------------------------------------------------------------------
+-- ATTAQUE CIBLE
+--------------------------------------------------------------------
 local function attackClosestTarget()
 	local character = LocalPlayer.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
@@ -336,10 +367,9 @@ local function attackClosestTarget()
 	if closestTarget then
 		local pos = closestTarget.cframe.Position
 		local targetPos = pos - (closestTarget.cframe.LookVector * 4) + Vector3.new(0, 0.5, 0)
-		
+
 		hrp.CFrame = CFrame.new(targetPos, pos)
 
-		-- VISÉE ÉQUILIBRÉE : 5.5 studs vers le bas pour taper pile au milieu de la caisse
 		local aimOffset = isRegisterTarget and Vector3.new(0, 5.5, 0) or Vector3.new(0, 2.5, 0)
 		Camera.CFrame = CFrame.new(targetPos - (closestTarget.cframe.LookVector * 5) + Vector3.new(0, 0.2, 0), pos - aimOffset)
 
@@ -367,7 +397,7 @@ local function attackClosestTarget()
 			end
 
 			hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(pos.X, hrp.Position.Y, pos.Z))
-			
+
 			shotCount = shotCount + 1
 			dbTool:Activate()
 
@@ -387,28 +417,31 @@ local function attackClosestTarget()
 	return false
 end
 
-attackBtn.MouseButton1Click:Connect(function()
-	if not isAutoFarmActive then attackClosestTarget() end
-end)
-
-autoBtn.MouseButton1Click:Connect(function()
+--------------------------------------------------------------------
+-- AUTO FARM
+--------------------------------------------------------------------
+autofarm.MouseButton1Click:Connect(function()
 	isAutoFarmActive = not isAutoFarmActive
 	if isAutoFarmActive then
-		autoBtn.Text = "Auto Farm: ON"
-		autoBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 100)
+		autofarm.Text = "Auto Farm: ON"
+		autofarm.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
 	else
-		autoBtn.Text = "Auto Farm: OFF"
-		autoBtn.BackgroundColor3 = Color3.fromRGB(120, 50, 200)
+		autofarm.Text = "Auto Farm: OFF"
+		autofarm.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 	end
 end)
 
 task.spawn(function()
-	while true do
+	while isAlive do
 		if isAutoFarmActive then
-			pcall(function() attackClosestTarget() end)
-			task.wait(0.5)
-		else
-			task.wait(0.5)
+			pcall(attackClosestTarget)
 		end
+		task.wait(0.5)
 	end
+end)
+
+Exit.MouseButton1Click:Connect(function()
+	isAlive = false
+	isAutoFarmActive = false
+	ScreenGui:Destroy()
 end)
