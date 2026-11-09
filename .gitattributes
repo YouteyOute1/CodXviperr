@@ -1,2 +1,414 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+-- LocalScript : Placer dans StarterPlayer > StarterPlayerScripts
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local isMapInvisible = false
+local isAutoFarmActive = false
+local originalTransparencies = {}
+local activeHighlights = {}
+local activeConnections = {}
+local registerInitialDoors = {}
+local shotCount = 0
+
+-- Interface GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "Master_Farm_GUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
+
+-- Frame Déplaçable
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 440, 0, 50)
+mainFrame.Position = UDim2.new(0.5, -220, 0.05, 0)
+mainFrame.BackgroundTransparency = 1
+mainFrame.Parent = screenGui
+
+local dragging, dragStart, startPos
+mainFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = mainFrame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+
+-- Bouton 1 : X-Ray
+local xRayBtn = Instance.new("TextButton")
+xRayBtn.Size = UDim2.new(0, 140, 0, 45)
+xRayBtn.Position = UDim2.new(0, 0, 0, 0)
+xRayBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+xRayBtn.Text = "X-Ray: OFF"
+xRayBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+xRayBtn.Font = Enum.Font.GothamBold
+xRayBtn.TextSize = 12
+xRayBtn.Parent = mainFrame
+
+local corner1 = Instance.new("UICorner")
+corner1.CornerRadius = UDim.new(0, 8)
+corner1.Parent = xRayBtn
+
+-- Bouton 2 : Mode Auto
+local autoBtn = Instance.new("TextButton")
+autoBtn.Size = UDim2.new(0, 140, 0, 45)
+autoBtn.Position = UDim2.new(0, 150, 0, 0)
+autoBtn.BackgroundColor3 = Color3.fromRGB(120, 50, 200)
+autoBtn.Text = "Auto Farm: OFF"
+autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoBtn.Font = Enum.Font.GothamBold
+autoBtn.TextSize = 12
+autoBtn.Parent = mainFrame
+
+local cornerAuto = Instance.new("UICorner")
+cornerAuto.CornerRadius = UDim.new(0, 8)
+cornerAuto.Parent = autoBtn
+
+-- Bouton 3 : Attaquer 1 Cible
+local attackBtn = Instance.new("TextButton")
+attackBtn.Size = UDim2.new(0, 140, 0, 45)
+attackBtn.Position = UDim2.new(0, 300, 0, 0)
+attackBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 220)
+attackBtn.Text = "🎯 Attaquer 1 Cible"
+attackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+attackBtn.Font = Enum.Font.GothamBold
+attackBtn.TextSize = 11
+attackBtn.Parent = mainFrame
+
+local corner2 = Instance.new("UICorner")
+corner2.CornerRadius = UDim.new(0, 8)
+corner2.Parent = attackBtn
+
+-- 1. DÉTECTION ÉTAT ATM & REGISTER
+local function isATMBroken(atmObj)
+	local health = atmObj:GetAttribute("Health")
+	if health and typeof(health) == "number" and health <= 1 then return true end
+	local isOpen = atmObj:GetAttribute("Open")
+	if isOpen == true then return true end
+	local brokenVal = atmObj:FindFirstChild("Broken") or atmObj:FindFirstChild("IsBroken")
+	if brokenVal and (brokenVal.Value == true or brokenVal.Value == 1) then return true end
+	return false
+end
+
+local function getRegisterModel(obj)
+	local current = obj
+	while current and current ~= Workspace do
+		if current.Name == "Register" and current:IsA("Model") then
+			return current
+		end
+		current = current.Parent
+	end
+	return nil
+end
+
+local function isRegisterOpened(regModel)
+	if not regModel or not regModel.Parent then return true end
+	for attrName, val in pairs(regModel:GetAttributes()) do
+		local n = attrName:lower()
+		if (n:find("open") or n:find("broken") or n:find("used")) and val == true then return true end
+	end
+	local door = regModel:FindFirstChild("Door")
+	if door and door:IsA("BasePart") then
+		local initialCFrame = registerInitialDoors[regModel]
+		if initialCFrame then
+			local distance = (door.Position - initialCFrame.Position).Magnitude
+			if distance > 0.2 then return true end
+		end
+	end
+	return false
+end
+
+-- 2. FILTRAGE ET HIGHLIGHTS
+local function shouldIgnoreCandy(obj)
+	local fullName = obj.Name:lower()
+	for _, descendant in ipairs(obj:GetDescendants()) do
+		if descendant:IsA("TextLabel") then
+			local text = descendant.Text:lower()
+			if text:find("-$7") or text:find("7") then return true end
+		end
+	end
+	if fullName:find("-$7") or fullName:find("7") then return true end
+	return false
+end
+
+local function isPickableCash(obj)
+	if shouldIgnoreCandy(obj) then return false end
+	if obj:FindFirstChildOfClass("ProximityPrompt") or obj:FindFirstChildOfClass("ClickDetector") then return true end
+	if obj.Parent and (obj.Parent:FindFirstChildOfClass("ProximityPrompt") or obj.Parent:FindFirstChildOfClass("ClickDetector")) then return true end
+	return false
+end
+
+local function applyHighlight(obj, fillColor)
+	if not (obj:IsA("Model") or obj:IsA("BasePart")) then return end
+	local highlight = obj:FindFirstChild("Master_HL")
+	if not highlight then
+		highlight = Instance.new("Highlight")
+		highlight.Name = "Master_HL"
+		highlight.FillTransparency = 0.25
+		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.Parent = obj
+		table.insert(activeHighlights, highlight)
+	end
+	highlight.FillColor = fillColor
+end
+
+local function processObject(obj)
+	if not isMapInvisible then return end
+	local name = obj.Name:lower()
+
+	-- ATM
+	if name == "atm" or name == "atms" then
+		local color = isATMBroken(obj) and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(0, 255, 128)
+		applyHighlight(obj, color)
+		local c1 = obj:GetAttributeChangedSignal("Health"):Connect(function()
+			if isMapInvisible then applyHighlight(obj, isATMBroken(obj) and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(0, 255, 128)) end
+		end)
+		table.insert(activeConnections, c1)
+
+	-- REGISTER
+	else
+		local reg = getRegisterModel(obj)
+		if reg then
+			local door = reg:FindFirstChild("Door")
+			if door and door:IsA("BasePart") and not registerInitialDoors[reg] then
+				registerInitialDoors[reg] = door.CFrame
+			end
+			if obj:IsA("UnionOperation") and obj.Material == Enum.Material.SmoothPlastic then
+				local color = isRegisterOpened(reg) and Color3.fromRGB(255, 140, 0) or Color3.fromRGB(0, 255, 128)
+				applyHighlight(obj, color)
+			end
+		elseif name:find("candycash") or name:find("candy") or name:find("cash") or name:find("money") then
+			task.delay(0.15, function()
+				if isMapInvisible and obj and obj.Parent and isPickableCash(obj) then
+					applyHighlight(obj, Color3.fromRGB(0, 255, 128))
+				end
+			end)
+		end
+	end
+end
+
+-- 3. X-RAY CONTROL
+local function setMapInvisibility(enable)
+	if enable then
+		originalTransparencies = {}
+		activeConnections = {}
+
+		for _, part in ipairs(Workspace:GetDescendants()) do
+			if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
+				local isPlayerChar = Players:GetPlayerFromCharacter(part.Parent) or Players:GetPlayerFromCharacter(part.Parent.Parent)
+				local name = part.Name:lower()
+				local reg = getRegisterModel(part)
+				local isProtected = name:find("atm") or reg or ( (name:find("candy") or name:find("cash")) and isPickableCash(part) )
+				
+				if not isPlayerChar and not isProtected then
+					originalTransparencies[part] = part.Transparency
+					part.LocalTransparencyModifier = 0.85
+				end
+			end
+		end
+
+		for _, obj in ipairs(Workspace:GetDescendants()) do processObject(obj) end
+		local conn = Workspace.DescendantAdded:Connect(function(obj) processObject(obj) end)
+		table.insert(activeConnections, conn)
+	else
+		for _, conn in ipairs(activeConnections) do
+			if typeof(conn) == "RBXScriptConnection" then conn:Disconnect() end
+		end
+		activeConnections = {}
+
+		for part, originalTransparency in pairs(originalTransparencies) do
+			if part and part.Parent then part.LocalTransparencyModifier = 0 end
+		end
+		originalTransparencies = {}
+
+		for _, desc in ipairs(Workspace:GetDescendants()) do
+			local hl = desc:FindFirstChild("Master_HL")
+			if hl then hl:Destroy() end
+		end
+		activeHighlights = {}
+	end
+end
+
+xRayBtn.MouseButton1Click:Connect(function()
+	isMapInvisible = not isMapInvisible
+	if isMapInvisible then
+		xRayBtn.Text = "X-Ray: ON"
+		xRayBtn.BackgroundColor3 = Color3.fromRGB(40, 180, 80)
+		setMapInvisibility(true)
+	else
+		xRayBtn.Text = "X-Ray: OFF"
+		xRayBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		setMapInvisibility(false)
+	end
+end)
+
+-- 4. RAMASSAGE DU CASH
+local function collectNearbyLoot(hrp)
+	task.wait(0.3)
+	for attempt = 1, 5 do
+		local foundAny = false
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+			local name = obj.Name:lower()
+			if (name:find("candycash") or name:find("candy") or name:find("cash") or name:find("money")) and isPickableCash(obj) then
+				local lootPos = obj:IsA("Model") and obj:GetPivot().Position or (obj:IsA("BasePart") and obj.Position)
+				if lootPos and (hrp.Position - lootPos).Magnitude < 40 then
+					foundAny = true
+					hrp.CFrame = CFrame.new(lootPos + Vector3.new(0, 1, 0))
+					task.wait(0.1)
+
+					local prompt = obj:FindFirstChildOfClass("ProximityPrompt") or (obj.Parent and obj.Parent:FindFirstChildOfClass("ProximityPrompt"))
+					if prompt then
+						pcall(function()
+							prompt.HoldDuration = 0 
+							fireproximityprompt(prompt)
+						end)
+					end
+
+					VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+					task.wait(0.1)
+					VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+					task.wait(0.05)
+				end
+			end
+		end
+		if not foundAny then break end
+		task.wait(0.2)
+	end
+end
+
+-- 5. ATTAQUE CIBLE (HAUTEUR DE VISÉE AJUSTÉE PIL-POIL)
+local function attackClosestTarget()
+	local character = LocalPlayer.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not hrp or not humanoid then return false end
+
+	local closestTarget = nil
+	local shortestDist = math.huge
+	local isRegisterTarget = false
+
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		local name = obj.Name:lower()
+		local isAvailable = false
+		local targetCFrame = nil
+		local isReg = false
+
+		if name == "atm" and (obj:IsA("Model") or obj:IsA("BasePart")) then
+			if not isATMBroken(obj) then
+				isAvailable = true
+				targetCFrame = obj:IsA("Model") and obj:GetPivot() or obj.CFrame
+				isReg = false
+			end
+		elseif obj.Name == "Register" and obj:IsA("Model") then
+			if not isRegisterOpened(obj) then
+				isAvailable = true
+				targetCFrame = obj:GetPivot()
+				isReg = true
+			end
+		end
+
+		if isAvailable and targetCFrame then
+			local dist = (hrp.Position - targetCFrame.Position).Magnitude
+			if dist < shortestDist then
+				shortestDist = dist
+				closestTarget = {object = obj, cframe = targetCFrame}
+				isRegisterTarget = isReg
+			end
+		end
+	end
+
+	if closestTarget then
+		local pos = closestTarget.cframe.Position
+		local targetPos = pos - (closestTarget.cframe.LookVector * 4) + Vector3.new(0, 0.5, 0)
+		
+		hrp.CFrame = CFrame.new(targetPos, pos)
+
+		-- VISÉE ÉQUILIBRÉE : 5.5 studs vers le bas pour taper pile au milieu de la caisse
+		local aimOffset = isRegisterTarget and Vector3.new(0, 5.5, 0) or Vector3.new(0, 2.5, 0)
+		Camera.CFrame = CFrame.new(targetPos - (closestTarget.cframe.LookVector * 5) + Vector3.new(0, 0.2, 0), pos - aimOffset)
+
+		local backpack = LocalPlayer:FindFirstChild("Backpack")
+		local dbTool = nil
+
+		local function findDB(parent)
+			if not parent then return nil end
+			for _, item in ipairs(parent:GetChildren()) do
+				local itemName = item.Name:lower()
+				if item:IsA("Tool") and (itemName:find("double") or itemName:find("db")) then return item end
+			end
+		end
+
+		dbTool = findDB(backpack) or findDB(character)
+
+		if dbTool then
+			humanoid:EquipTool(dbTool)
+			task.wait(0.15)
+
+			local screenPoint, onScreen = Camera:WorldToScreenPoint(pos - aimOffset)
+			if onScreen then
+				VirtualInputManager:SendMouseMoveEvent(screenPoint.X, screenPoint.Y, game)
+				task.wait(0.05)
+			end
+
+			hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(pos.X, hrp.Position.Y, pos.Z))
+			
+			shotCount = shotCount + 1
+			dbTool:Activate()
+
+			task.wait(0.2)
+
+			if shotCount >= 2 then
+				VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game)
+				task.wait(0.05)
+				VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game)
+				shotCount = 0
+			end
+
+			collectNearbyLoot(hrp)
+			return true
+		end
+	end
+	return false
+end
+
+attackBtn.MouseButton1Click:Connect(function()
+	if not isAutoFarmActive then attackClosestTarget() end
+end)
+
+autoBtn.MouseButton1Click:Connect(function()
+	isAutoFarmActive = not isAutoFarmActive
+	if isAutoFarmActive then
+		autoBtn.Text = "Auto Farm: ON"
+		autoBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 100)
+	else
+		autoBtn.Text = "Auto Farm: OFF"
+		autoBtn.BackgroundColor3 = Color3.fromRGB(120, 50, 200)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		if isAutoFarmActive then
+			pcall(function() attackClosestTarget() end)
+			task.wait(0.5)
+		else
+			task.wait(0.5)
+		end
+	end
+end)
