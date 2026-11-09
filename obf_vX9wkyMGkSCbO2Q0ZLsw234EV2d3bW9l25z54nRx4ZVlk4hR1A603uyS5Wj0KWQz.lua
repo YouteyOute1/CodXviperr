@@ -1,0 +1,416 @@
+--[[
+ .____                  ________ ___.    _____                           __                
+ |    |    __ _______   \_____  \\_ |___/ ____\_ __  ______ ____ _____ _/  |_  ___________ 
+ |    |   |  |  \__  \   /   |   \| __ \   __\  |  \/  ___// ___\\__  \\   __\/  _ \_  __ \
+ |    |___|  |  // __ \_/    |    \ \_\ \  | |  |  /\___ \\  \___ / __ \|  | (  <_> )  | \/
+ |_______ \____/(____  /\_______  /___  /__| |____//____  >\___  >____  /__|  \____/|__|   
+         \/          \/         \/    \/                \/     \/     \/                   
+          \_Welcome to LuaObfuscator.com   (Alpha 0.10.9) ~  Much Love, Ferib 
+
+]]--
+
+local Players = game:GetService("Players");
+local Workspace = game:GetService("Workspace");
+local VirtualInputManager = game:GetService("VirtualInputManager");
+local UserInputService = game:GetService("UserInputService");
+local LocalPlayer = Players.LocalPlayer;
+local Camera = Workspace.CurrentCamera;
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui");
+local isAutoFarmActive = false;
+local isAlive = true;
+local registerInitialDoors = {};
+local shotCount = 0;
+local ScreenGui = Instance.new("ScreenGui");
+local Frame = Instance.new("Frame");
+local Topbar = Instance.new("Frame");
+local Title = Instance.new("TextLabel");
+local Exit = Instance.new("TextButton");
+local minimize = Instance.new("TextButton");
+local Frame_2 = Instance.new("Frame");
+local ImageLabel = Instance.new("ImageLabel");
+local autofarm = Instance.new("TextButton");
+local candyLabel = Instance.new("TextLabel");
+ScreenGui.Name = "Master_Farm_GUI";
+ScreenGui.Parent = PlayerGui;
+ScreenGui.ResetOnSpawn = false;
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling;
+Frame.Parent = ScreenGui;
+Frame.BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+Frame.BackgroundTransparency = 1;
+Frame.BorderColor3 = Color3.fromRGB(0, 0, 0);
+Frame.BorderSizePixel = 0;
+Frame.Position = UDim2.new(0.407407403, 0, 0.40157479, 0);
+Frame.Size = UDim2.new(0, 395, 0, 248);
+Topbar.Name = "Topbar";
+Topbar.Parent = Frame;
+Topbar.BackgroundColor3 = Color3.fromRGB(0, 0, 0);
+Topbar.BorderColor3 = Color3.fromRGB(0, 0, 0);
+Topbar.BorderSizePixel = 0;
+Topbar.Position = UDim2.new(-0.0685420185, 0, -0.00165090256, 0);
+Topbar.Size = UDim2.new(0, 421, 0, 49);
+Title.Parent = Topbar;
+Title.BackgroundTransparency = 1;
+Title.Position = UDim2.new(0, 12, 0, 0);
+Title.Size = UDim2.new(0, 200, 1, 0);
+Title.Font = Enum.Font.GothamBold;
+Title.Text = "DOLL.404 Farm";
+Title.TextColor3 = Color3.fromRGB(255, 255, 255);
+Title.TextSize = 16;
+Title.TextXAlignment = Enum.TextXAlignment.Left;
+Exit.Name = "Exit";
+Exit.Parent = Topbar;
+Exit.BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+Exit.BorderColor3 = Color3.fromRGB(0, 0, 0);
+Exit.BorderSizePixel = 0;
+Exit.Position = UDim2.new(0.885606945, 0, 0.244897962, 0);
+Exit.Size = UDim2.new(0, 40, 0, 25);
+Exit.ZIndex = 3;
+Exit.Font = Enum.Font.GothamBold;
+Exit.Text = "X";
+Exit.TextColor3 = Color3.fromRGB(0, 0, 0);
+Exit.TextSize = 14;
+minimize.Name = "minimize";
+minimize.Parent = Topbar;
+minimize.BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+minimize.BorderColor3 = Color3.fromRGB(0, 0, 0);
+minimize.BorderSizePixel = 0;
+minimize.Position = UDim2.new(0.751429617, 0, 0.244897962, 0);
+minimize.Size = UDim2.new(0, 40, 0, 25);
+minimize.Font = Enum.Font.GothamBold;
+minimize.Text = "-";
+minimize.TextColor3 = Color3.fromRGB(0, 0, 0);
+minimize.TextSize = 14;
+Frame_2.Parent = Frame;
+Frame_2.BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+Frame_2.BackgroundTransparency = 1;
+Frame_2.BorderColor3 = Color3.fromRGB(0, 0, 0);
+Frame_2.BorderSizePixel = 0;
+Frame_2.Position = UDim2.new(-0.000187586527, 0, 0.195929736, 0);
+Frame_2.Size = UDim2.new(0, 395, 0, 159);
+ImageLabel.Parent = Frame_2;
+ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255);
+ImageLabel.BorderColor3 = Color3.fromRGB(0, 0, 0);
+ImageLabel.BorderSizePixel = 0;
+ImageLabel.Position = UDim2.new(-0.0683544278, 0, 0, 0);
+ImageLabel.Size = UDim2.new(1.06582284, 0, 1.40251577, 0);
+ImageLabel.Image = "rbxassetid://99904366038876";
+autofarm.Name = "autofarm";
+autofarm.Parent = Frame_2;
+autofarm.BackgroundColor3 = Color3.fromRGB(255, 0, 0);
+autofarm.BorderColor3 = Color3.fromRGB(0, 0, 0);
+autofarm.BorderSizePixel = 0;
+autofarm.Position = UDim2.new(0.5924052, 0, 0.9, 0);
+autofarm.Size = UDim2.new(0, 136, 0, 33);
+autofarm.Font = Enum.Font.GothamBold;
+autofarm.Text = "Auto Farm: OFF";
+autofarm.TextColor3 = Color3.fromRGB(255, 255, 255);
+autofarm.TextSize = 12;
+candyLabel.Name = "candyLabel";
+candyLabel.Parent = Frame_2;
+candyLabel.BackgroundTransparency = 1;
+candyLabel.BorderSizePixel = 0;
+candyLabel.Position = UDim2.new(0.72, 0, 0.08, 0);
+candyLabel.Size = UDim2.new(0, 105, 0, 34);
+candyLabel.Font = Enum.Font.GothamBold;
+candyLabel.Text = "🍬 ...";
+candyLabel.TextColor3 = Color3.fromRGB(255, 215, 0);
+candyLabel.TextScaled = true;
+candyLabel.TextSize = 14;
+local candyStroke = Instance.new("UIStroke");
+candyStroke.Color = Color3.fromRGB(0, 0, 0);
+candyStroke.Thickness = 1.5;
+candyStroke.Parent = candyLabel;
+local candyPadding = Instance.new("UIPadding");
+candyPadding.PaddingLeft = UDim.new(0, 6);
+candyPadding.PaddingRight = UDim.new(0, 6);
+candyPadding.PaddingTop = UDim.new(0, 5);
+candyPadding.PaddingBottom = UDim.new(0, 5);
+candyPadding.Parent = candyLabel;
+local dragging, dragStart, startPos;
+Topbar.InputBegan:Connect(function(input)
+	if ((input.UserInputType == Enum.UserInputType.MouseButton1) or (input.UserInputType == Enum.UserInputType.Touch)) then
+		dragging = true;
+		dragStart = input.Position;
+		startPos = Frame.Position;
+		input.Changed:Connect(function()
+			if (input.UserInputState == Enum.UserInputState.End) then
+				dragging = false;
+			end
+		end);
+	end
+end);
+UserInputService.InputChanged:Connect(function(input)
+	if (dragging and ((input.UserInputType == Enum.UserInputType.MouseMovement) or (input.UserInputType == Enum.UserInputType.Touch))) then
+		local delta = input.Position - dragStart;
+		Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y);
+	end
+end);
+local minimized = false;
+minimize.MouseButton1Click:Connect(function()
+	minimized = not minimized;
+	Frame_2.Visible = not minimized;
+end);
+local function formatFullNumber(number)
+	if (type(number) ~= "number") then
+		return "0";
+	end
+	local formatted = tostring(math.floor(number));
+	local k;
+	while true do
+		formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", "%1 %2");
+		if (k == 0) then
+			break;
+		end
+	end
+	return formatted;
+end
+local function scanForCandies()
+	for name, val in pairs(LocalPlayer:GetAttributes()) do
+		if (name:lower():find("candy") or name:lower():find("candies")) then
+			return tonumber(val) or 0;
+		end
+	end
+	for _, obj in ipairs(LocalPlayer:GetDescendants()) do
+		if obj:IsA("ValueBase") then
+			local lowerName = obj.Name:lower();
+			if (lowerName:find("candy") or lowerName:find("candies") or lowerName:find("bonbon")) then
+				return obj.Value;
+			end
+		end
+	end
+	for _, guiObj in ipairs(PlayerGui:GetDescendants()) do
+		if ((guiObj:IsA("TextLabel") or guiObj:IsA("TextBox")) and not guiObj:IsDescendantOf(ScreenGui)) then
+			local parentName = (guiObj.Parent and guiObj.Parent.Name:lower()) or "";
+			local name = guiObj.Name:lower();
+			if ((parentName:find("candy") or name:find("candy")) and (guiObj.Text ~= "")) then
+				local cleanText = guiObj.Text:gsub("[,%s%.]", "");
+				local number = cleanText:match("%d+");
+				if number then
+					return tonumber(number);
+				end
+			end
+		end
+	end
+	local backpack = LocalPlayer:FindFirstChild("Backpack");
+	if backpack then
+		local count = 0;
+		for _, item in ipairs(backpack:GetChildren()) do
+			if item.Name:lower():find("candy") then
+				count = count + 1;
+			end
+		end
+		if (count > 0) then
+			return count;
+		end
+	end
+	return 0;
+end
+task.spawn(function()
+	while isAlive do
+		local ok, amount = pcall(scanForCandies);
+		candyLabel.Text = "🍬 " .. formatFullNumber((ok and amount) or 0);
+		task.wait(0.5);
+	end
+end);
+local function isATMBroken(atmObj)
+	local health = atmObj:GetAttribute("Health");
+	if (health and (typeof(health) == "number") and (health <= 1)) then
+		return true;
+	end
+	local isOpen = atmObj:GetAttribute("Open");
+	if (isOpen == true) then
+		return true;
+	end
+	local brokenVal = atmObj:FindFirstChild("Broken") or atmObj:FindFirstChild("IsBroken");
+	if (brokenVal and ((brokenVal.Value == true) or (brokenVal.Value == 1))) then
+		return true;
+	end
+	return false;
+end
+local function isRegisterOpened(regModel)
+	if (not regModel or not regModel.Parent) then
+		return true;
+	end
+	for attrName, val in pairs(regModel:GetAttributes()) do
+		local n = attrName:lower();
+		if ((n:find("open") or n:find("broken") or n:find("used")) and (val == true)) then
+			return true;
+		end
+	end
+	local door = regModel:FindFirstChild("Door");
+	if (door and door:IsA("BasePart")) then
+		local initialCFrame = registerInitialDoors[regModel];
+		if not initialCFrame then
+			registerInitialDoors[regModel] = door.CFrame;
+		else
+			local distance = (door.Position - initialCFrame.Position).Magnitude;
+			if (distance > 0.2) then
+				return true;
+			end
+		end
+	end
+	return false;
+end
+local function shouldIgnoreCandy(obj)
+	local fullName = obj.Name:lower();
+	for _, descendant in ipairs(obj:GetDescendants()) do
+		if descendant:IsA("TextLabel") then
+			local text = descendant.Text:lower();
+			if (text:find("-$7") or text:find("7")) then
+				return true;
+			end
+		end
+	end
+	if (fullName:find("-$7") or fullName:find("7")) then
+		return true;
+	end
+	return false;
+end
+local function isPickableCash(obj)
+	if shouldIgnoreCandy(obj) then
+		return false;
+	end
+	if (obj:FindFirstChildOfClass("ProximityPrompt") or obj:FindFirstChildOfClass("ClickDetector")) then
+		return true;
+	end
+	if (obj.Parent and (obj.Parent:FindFirstChildOfClass("ProximityPrompt") or obj.Parent:FindFirstChildOfClass("ClickDetector"))) then
+		return true;
+	end
+	return false;
+end
+local function collectNearbyLoot(hrp)
+	task.wait(0.3);
+	for attempt = 1, 5 do
+		local foundAny = false;
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+			local name = obj.Name:lower();
+			if ((name:find("candycash") or name:find("candy") or name:find("cash") or name:find("money")) and isPickableCash(obj)) then
+				local lootPos = (obj:IsA("Model") and obj:GetPivot().Position) or (obj:IsA("BasePart") and obj.Position);
+				if (lootPos and ((hrp.Position - lootPos).Magnitude < 40)) then
+					foundAny = true;
+					hrp.CFrame = CFrame.new(lootPos + Vector3.new(0, 1, 0));
+					task.wait(0.1);
+					local prompt = obj:FindFirstChildOfClass("ProximityPrompt") or (obj.Parent and obj.Parent:FindFirstChildOfClass("ProximityPrompt"));
+					if prompt then
+						pcall(function()
+							prompt.HoldDuration = 0;
+							fireproximityprompt(prompt);
+						end);
+					end
+					VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game);
+					task.wait(0.1);
+					VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game);
+					task.wait(0.05);
+				end
+			end
+		end
+		if not foundAny then
+			break;
+		end
+		task.wait(0.2);
+	end
+end
+local function attackClosestTarget()
+	local character = LocalPlayer.Character;
+	local hrp = character and character:FindFirstChild("HumanoidRootPart");
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid");
+	if (not hrp or not humanoid) then
+		return false;
+	end
+	local closestTarget = nil;
+	local shortestDist = math.huge;
+	local isRegisterTarget = false;
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		local name = obj.Name:lower();
+		local isAvailable = false;
+		local targetCFrame = nil;
+		local isReg = false;
+		if ((name == "atm") and (obj:IsA("Model") or obj:IsA("BasePart"))) then
+			if not isATMBroken(obj) then
+				isAvailable = true;
+				targetCFrame = (obj:IsA("Model") and obj:GetPivot()) or obj.CFrame;
+				isReg = false;
+			end
+		elseif ((obj.Name == "Register") and obj:IsA("Model")) then
+			if not isRegisterOpened(obj) then
+				isAvailable = true;
+				targetCFrame = obj:GetPivot();
+				isReg = true;
+			end
+		end
+		if (isAvailable and targetCFrame) then
+			local dist = (hrp.Position - targetCFrame.Position).Magnitude;
+			if (dist < shortestDist) then
+				shortestDist = dist;
+				closestTarget = {object=obj,cframe=targetCFrame};
+				isRegisterTarget = isReg;
+			end
+		end
+	end
+	if closestTarget then
+		local pos = closestTarget.cframe.Position;
+		local targetPos = (pos - (closestTarget.cframe.LookVector * 4)) + Vector3.new(0, 0.5, 0);
+		hrp.CFrame = CFrame.new(targetPos, pos);
+		local aimOffset = (isRegisterTarget and Vector3.new(0, 5.5, 0)) or Vector3.new(0, 2.5, 0);
+		Camera.CFrame = CFrame.new((targetPos - (closestTarget.cframe.LookVector * 5)) + Vector3.new(0, 0.2, 0), pos - aimOffset);
+		local backpack = LocalPlayer:FindFirstChild("Backpack");
+		local dbTool = nil;
+		local function findDB(parent)
+			if not parent then
+				return nil;
+			end
+			for _, item in ipairs(parent:GetChildren()) do
+				local itemName = item.Name:lower();
+				if (item:IsA("Tool") and (itemName:find("double") or itemName:find("db"))) then
+					return item;
+				end
+			end
+		end
+		dbTool = findDB(backpack) or findDB(character);
+		if dbTool then
+			humanoid:EquipTool(dbTool);
+			task.wait(0.15);
+			local screenPoint, onScreen = Camera:WorldToScreenPoint(pos - aimOffset);
+			if onScreen then
+				VirtualInputManager:SendMouseMoveEvent(screenPoint.X, screenPoint.Y, game);
+				task.wait(0.05);
+			end
+			hrp.CFrame = CFrame.new(hrp.Position, Vector3.new(pos.X, hrp.Position.Y, pos.Z));
+			shotCount = shotCount + 1;
+			dbTool:Activate();
+			task.wait(0.2);
+			if (shotCount >= 2) then
+				VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.R, false, game);
+				task.wait(0.05);
+				VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.R, false, game);
+				shotCount = 0;
+			end
+			collectNearbyLoot(hrp);
+			return true;
+		end
+	end
+	return false;
+end
+autofarm.MouseButton1Click:Connect(function()
+	isAutoFarmActive = not isAutoFarmActive;
+	if isAutoFarmActive then
+		autofarm.Text = "Auto Farm: ON";
+		autofarm.BackgroundColor3 = Color3.fromRGB(40, 180, 80);
+	else
+		autofarm.Text = "Auto Farm: OFF";
+		autofarm.BackgroundColor3 = Color3.fromRGB(255, 0, 0);
+	end
+end);
+task.spawn(function()
+	while isAlive do
+		if isAutoFarmActive then
+			pcall(attackClosestTarget);
+		end
+		task.wait(0.5);
+	end
+end);
+Exit.MouseButton1Click:Connect(function()
+	isAlive = false;
+	isAutoFarmActive = false;
+	ScreenGui:Destroy();
+end);
